@@ -1,22 +1,18 @@
-# %% [code]
 import streamlit as st
 from PyPDF2 import PdfReader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 import os
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 import google.generativeai as genai
-from langchain.vectorstores import FAISS
+from langchain_community.vectorstores import FAISS
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.chains.question_answering import load_qa_chain
 from langchain.prompts import PromptTemplate
 
 
-# %% [code]
 gemini_api_key = "AIzaSyAdLVKlp1cGOZhU9oFz9jOgTVBcpgLlY5g"
 genai.configure(api_key=gemini_api_key)
 
-
-# %% [code]
 
 def get_pdf_text(pdf_docs):
     text=""
@@ -28,25 +24,19 @@ def get_pdf_text(pdf_docs):
 
 
 
-# %% [code]
-
 def get_text_chunks(text):
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=10000, chunk_overlap=1000)
     chunks = text_splitter.split_text(text)
     return chunks
 
 
-# %% [code]
-
 
 def get_vector_store(text_chunks):
-    embeddings = GoogleGenerativeAIEmbeddings(model = "models/embedding-001")
+    embeddings = GoogleGenerativeAIEmbeddings(model = "models/embedding-001", google_api_key=gemini_api_key)
     vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
     vector_store.save_local("faiss_index")
 
 
-
-# %% [code]
 
 def get_conversational_chain():
 
@@ -60,7 +50,8 @@ def get_conversational_chain():
     """
 
     model = ChatGoogleGenerativeAI(model="gemini-pro",
-                             temperature=0.3)
+                             temperature=0.3,
+                             google_api_key=gemini_api_key)
 
     prompt = PromptTemplate(template = prompt_template, input_variables = ["context", "question"])
     chain = load_qa_chain(model, chain_type="stuff", prompt=prompt)
@@ -69,13 +60,11 @@ def get_conversational_chain():
 
 
 
-# %% [code]
-
 
 def user_input(user_question):
-    embeddings = GoogleGenerativeAIEmbeddings(model = "models/embedding-001")
+    embeddings = GoogleGenerativeAIEmbeddings(model = "models/embedding-001", google_api_key = gemini_api_key)
     
-    new_db = FAISS.load_local("faiss_index", embeddings)
+    new_db = FAISS.load_local("faiss_index", embeddings, allow_dangerous_deserialization=True)
     docs = new_db.similarity_search(user_question)
 
     chain = get_conversational_chain()
@@ -90,8 +79,6 @@ def user_input(user_question):
 
 
 
-
-# %% [code]
 
 
 def main():
@@ -115,10 +102,5 @@ def main():
 
 
 
-
-# %% [code]
-
 if __name__ == "__main__":
     main()
-
-# %% [code]
